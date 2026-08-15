@@ -1,0 +1,21 @@
+{
+  "name": "fraudshield-backend",
+  "version": "1.0.0",
+  "description": "FraudShield - Real-Time Payment Fraud Detection and Investigation Platform",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test tests/engine.test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.10.1",
+    "socket.io": "^4.8.1"
+  }
+}
