@@ -56,7 +56,23 @@ export const api = {
   },
 
   async getCustomers() {
-    const res = await fetch(`${BASE_URL}/api/transactions/customers`, {
+    const res = await fetch(`${BASE_URL}/api/customers`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(res);
+  },
+
+  async sendPayment(payload) {
+    const res = await fetch(`${BASE_URL}/api/transactions/send`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
+
+  async getWalletCustomer(customerId) {
+    const res = await fetch(`${BASE_URL}/api/wallet/customer/${customerId}`, {
       headers: getAuthHeaders()
     });
     return handleResponse(res);

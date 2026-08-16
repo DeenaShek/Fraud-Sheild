@@ -90,5 +90,7 @@ export const TOPICS = {
   TRANSACTION_CREATED: 'transaction.created',
   TRANSACTION_SCORED: 'transaction.scored',
   ALERT_RAISED: 'alert.raised',
-  INVESTIGATION_RESOLVED: 'investigation.resolved'
+  INVESTIGATION_RESOLVED: 'investigation.resolved',
+  PAYMENT_SETTLED: 'payment.settled',
+  PAYMENT_HELD: 'payment.held'
 };

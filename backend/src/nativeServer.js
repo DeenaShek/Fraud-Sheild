@@ -55,7 +55,9 @@ const customers = [
     frequentMerchants: ['Swiggy', 'Amazon IN', 'Apollo Pharmacy', 'Indian Oil', 'Flipkart'],
     riskStatus: 'CLEAN',
     totalTransactionsCount: 142,
-    averageDailySpend: 3200
+    averageDailySpend: 3200,
+    walletBalance: 65400,
+    pendingReceipts: []
   },
   {
     customerId: 'CUST-1044',
@@ -68,7 +70,9 @@ const customers = [
     frequentMerchants: ['Emirates Gold & Luxury Watch Exchange', 'Dubai Duty Free', 'Careem'],
     riskStatus: 'FLAGGED',
     totalTransactionsCount: 28,
-    averageDailySpend: 18500
+    averageDailySpend: 18500,
+    walletBalance: 120000,
+    pendingReceipts: []
   },
   {
     customerId: 'CUST-3310',
@@ -81,7 +85,9 @@ const customers = [
     frequentMerchants: ['Zomato', 'Uber India', 'Reliance Digital', 'Tata Neu'],
     riskStatus: 'CLEAN',
     totalTransactionsCount: 89,
-    averageDailySpend: 4800
+    averageDailySpend: 4800,
+    walletBalance: 42300,
+    pendingReceipts: []
   },
   {
     customerId: 'CUST-9012',
@@ -94,7 +100,9 @@ const customers = [
     frequentMerchants: ['Crypto Sovereign Exchange', 'Geneva Luxury Vault'],
     riskStatus: 'BLOCKED',
     totalTransactionsCount: 12,
-    averageDailySpend: 45000
+    averageDailySpend: 45000,
+    walletBalance: 250000,
+    pendingReceipts: []
   }
 ];
 
@@ -395,6 +403,70 @@ eventBus.subscribe(TOPICS.INVESTIGATION_RESOLVED, ({ payload: resolutionData }) 
   broadcastEvent('investigation_resolved', resolutionData);
 });
 
+// Consumer 3: Payment Settlement & Receiver Wallet Ledger (Live Peer Payments)
+eventBus.subscribe(TOPICS.TRANSACTION_SCORED, ({ payload: scoredData }) => {
+  const { transaction: txnDoc, ruleEvaluation } = scoredData;
+  if (!txnDoc.receiverId) return;
+
+  const sender = customers.find(c => c.customerId === txnDoc.customerId);
+  const receiver = customers.find(c => c.customerId === txnDoc.receiverId);
+
+  if (txnDoc.riskBand === 'LOW' || txnDoc.riskBand === 'MEDIUM') {
+    // Settled: Credit receiver and deduct sender
+    if (sender) sender.walletBalance = Math.max(0, (sender.walletBalance || 50000) - txnDoc.amount);
+    if (receiver) receiver.walletBalance = (receiver.walletBalance || 50000) + txnDoc.amount;
+
+    const settledPayload = {
+      transactionId: txnDoc.transactionId,
+      senderId: txnDoc.customerId,
+      senderName: txnDoc.customerName,
+      receiverId: txnDoc.receiverId,
+      receiverName: receiver ? receiver.name : (txnDoc.merchant?.name || txnDoc.receiverId),
+      amount: txnDoc.amount,
+      riskBand: txnDoc.riskBand,
+      ruleScore: txnDoc.ruleScore,
+      action: txnDoc.action,
+      status: 'SETTLED',
+      receiverNewBalance: receiver?.walletBalance,
+      timestamp: new Date().toISOString()
+    };
+
+    eventBus.publish(TOPICS.PAYMENT_SETTLED, settledPayload);
+  } else {
+    // Held for Fraud Review: Do not credit receiver
+    const heldPayload = {
+      transactionId: txnDoc.transactionId,
+      senderId: txnDoc.customerId,
+      senderName: txnDoc.customerName,
+      receiverId: txnDoc.receiverId,
+      receiverName: receiver ? receiver.name : (txnDoc.merchant?.name || txnDoc.receiverId),
+      amount: txnDoc.amount,
+      riskBand: txnDoc.riskBand,
+      ruleScore: txnDoc.ruleScore,
+      action: txnDoc.action,
+      reasons: (ruleEvaluation?.reasons || []).filter(r => r.triggered).map(r => `${r.title} (+${r.points} pts)`),
+      status: 'HELD_FOR_REVIEW',
+      timestamp: new Date().toISOString()
+    };
+
+    if (receiver) {
+      if (!receiver.pendingReceipts) receiver.pendingReceipts = [];
+      receiver.pendingReceipts.unshift(heldPayload);
+      if (receiver.pendingReceipts.length > 50) receiver.pendingReceipts.pop();
+    }
+
+    eventBus.publish(TOPICS.PAYMENT_HELD, heldPayload);
+  }
+});
+
+eventBus.subscribe(TOPICS.PAYMENT_SETTLED, ({ payload }) => {
+  broadcastEvent('payment_settled', payload);
+});
+
+eventBus.subscribe(TOPICS.PAYMENT_HELD, ({ payload }) => {
+  broadcastEvent('payment_held', payload);
+});
+
 // ============================================================================
 // TRANSACTION INGESTION & PIPELINE EXECUTION
 // ============================================================================
@@ -444,6 +516,9 @@ function processTransaction(rawTxn) {
     networkRiskSignal: Boolean(rawTxn.networkRiskSignal),
     cardLast4: rawTxn.cardLast4 || '4412',
     cardType: rawTxn.cardType || 'Visa Platinum',
+    receiverId: rawTxn.receiverId || null,
+    receiverName: rawTxn.receiverName || null,
+    isPeerPayment: Boolean(rawTxn.isPeerPayment),
     ruleScore: ruleEvaluation.totalScore,
     riskBand: ruleEvaluation.riskBand,
     action: ruleEvaluation.action,
@@ -466,7 +541,7 @@ function processTransaction(rawTxn) {
   transactions.unshift(txnDoc);
   if (transactions.length > 200) transactions.pop();
 
-  // 2. Publish to Kafka topic: transaction.scored (Decoupled triggers Consumer 1 & Consumer 2)
+  // 2. Publish to Kafka topic: transaction.scored (Decoupled triggers Consumer 1 & Consumer 2 & Consumer 3)
   const scoredData = { transaction: txnDoc, ruleEvaluation, mlEvaluation };
   eventBus.publish(TOPICS.TRANSACTION_SCORED, scoredData);
 
@@ -853,7 +928,88 @@ const server = http.createServer(async (req, res) => {
     return sendJson({ success: true, count: results.length, results });
   }
 
-  // 6. Admin Routes
+  // 6. Live Interactive Peer Payment Endpoints (Judge Live Transfer Flow)
+  if (pathname === '/api/transactions/send' && req.method === 'POST') {
+    const body = await readBody();
+    const { senderId, receiverId, amount, simulateNewDevice, simulateNewLocation, simulateNewMerchant } = body;
+
+    const sender = customers.find(c => c.customerId === senderId) || customers[0];
+    const receiver = customers.find(c => c.customerId === receiverId);
+    const receiverName = receiver ? receiver.name : (receiverId === 'PEER-ANONYMOUS' ? 'Unknown Anonymous Wallet' : (receiverId || 'Peer Receiver'));
+
+    const rawTxn = {
+      transactionId: `TX-SEND-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+      customerId: sender.customerId,
+      customerName: sender.name,
+      customerBaseline: sender.baselineAmount,
+      amount: Number(amount) || sender.baselineAmount,
+      currency: 'INR',
+      deviceId: simulateNewDevice ? `DEV-JUDGE-${Date.now().toString().slice(-4)}` : (sender.knownDevices[0] || 'D101'),
+      location: simulateNewLocation ? 'Lagos, Nigeria' : sender.homeLocation,
+      homeLocation: sender.homeLocation,
+      isLocationAnomalous: Boolean(simulateNewLocation),
+      ipAddress: simulateNewLocation ? '185.220.101.44' : '103.21.124.89',
+      merchant: { id: `PEER-${receiverId || 'UNKNOWN'}`, name: receiverName, category: 'Peer Payment' },
+      isNewMerchant: Boolean(simulateNewMerchant),
+      isHighRiskMerchant: receiverId === 'PEER-ANONYMOUS',
+      velocity: 1,
+      networkRiskSignal: false,
+      receiverId: receiver?.customerId || receiverId || 'PEER-UNKNOWN',
+      receiverName,
+      isPeerPayment: true,
+      scenarioName: 'Live Judge P2P Payment',
+      timestamp: new Date().toISOString()
+    };
+
+    const result = processTransaction(rawTxn);
+    return sendJson({
+      success: true,
+      transactionId: rawTxn.transactionId,
+      status: 'submitted',
+      result,
+      transaction: result.transaction,
+      ruleEvaluation: result.ruleEvaluation,
+      mlEvaluation: result.mlEvaluation
+    });
+  }
+
+  if (pathname === '/api/customers' || pathname === '/api/wallet/customers') {
+    return sendJson({
+      customers: customers.map(c => ({
+        customerId: c.customerId,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        homeLocation: c.homeLocation,
+        baselineAmount: c.baselineAmount,
+        knownDevices: c.knownDevices,
+        riskStatus: c.riskStatus,
+        walletBalance: c.walletBalance ?? 50000,
+        pendingReceipts: c.pendingReceipts || []
+      }))
+    });
+  }
+
+  if (pathname.startsWith('/api/wallet/customer/')) {
+    const custId = pathname.replace('/api/wallet/customer/', '');
+    const cust = customers.find(c => c.customerId === custId);
+    if (!cust) return sendJson({ error: 'Customer not found' }, 404);
+
+    const history = transactions.filter(t => t.customerId === custId || t.receiverId === custId);
+    return sendJson({
+      customer: {
+        customerId: cust.customerId,
+        name: cust.name,
+        homeLocation: cust.homeLocation,
+        knownDevices: cust.knownDevices,
+        walletBalance: cust.walletBalance ?? 50000,
+        pendingReceipts: cust.pendingReceipts || []
+      },
+      history
+    });
+  }
+
+  // 7. Admin Routes
   if (pathname === '/api/admin/health') {
     return sendJson({
       status: 'OPERATIONAL_EXCELLENT',

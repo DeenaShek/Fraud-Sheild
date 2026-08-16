@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { Navbar } from './components/layout/Navbar';
@@ -6,12 +6,41 @@ import { Sidebar } from './components/layout/Sidebar';
 import { DetectionCenter } from './views/DetectionCenter';
 import { InvestigationWorkspace } from './views/InvestigationWorkspace';
 import { AdminPortal } from './views/AdminPortal';
+import { SenderView } from './views/SenderView';
+import { ReceiverView } from './views/ReceiverView';
 import { LoginView } from './views/LoginView';
+
+function getInitialView() {
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+  if (path === '/sender' || hash === '#sender') return 'sender';
+  if (path === '/receiver' || hash === '#receiver') return 'receiver';
+  if (path === '/admin' || hash === '#admin') return 'admin';
+  if (path === '/investigation' || hash === '#investigation') return 'investigation';
+  return 'detection';
+}
 
 function AppContent() {
   const { user, loading } = useAuth();
-  const [activeView, setActiveView] = useState('detection'); // 'detection' | 'investigation' | 'admin'
+  const [activeView, setActiveView] = useState(getInitialView);
   const [selectedTransactionId, setSelectedTransactionId] = useState('TX-WORKED-5001');
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      setActiveView(getInitialView());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleNavigate = (view) => {
+    setActiveView(view);
+    const targetPath = view === 'detection' ? '/' : `/${view}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, '', targetPath);
+    }
+  };
 
   if (loading) {
     return (
@@ -30,7 +59,7 @@ function AppContent() {
 
   const handleSelectTransaction = (txnId) => {
     setSelectedTransactionId(txnId);
-    setActiveView('investigation');
+    handleNavigate('investigation');
   };
 
   return (
@@ -39,7 +68,7 @@ function AppContent() {
       {/* Top Navbar */}
       <Navbar 
         activeView={activeView} 
-        setActiveView={setActiveView}
+        setActiveView={handleNavigate}
         onSelectTransaction={handleSelectTransaction}
       />
 
@@ -49,7 +78,7 @@ function AppContent() {
         {/* Navigation Sidebar */}
         <Sidebar 
           activeView={activeView} 
-          setActiveView={setActiveView} 
+          setActiveView={handleNavigate} 
         />
 
         {/* Content View Container */}
@@ -60,10 +89,22 @@ function AppContent() {
             />
           )}
 
+          {activeView === 'sender' && (
+            <SenderView 
+              onSelectTransaction={handleSelectTransaction}
+            />
+          )}
+
+          {activeView === 'receiver' && (
+            <ReceiverView 
+              onSelectTransaction={handleSelectTransaction}
+            />
+          )}
+
           {activeView === 'investigation' && (
             <InvestigationWorkspace 
               selectedTransactionId={selectedTransactionId}
-              onBack={() => setActiveView('detection')}
+              onBack={() => handleNavigate('detection')}
             />
           )}
 

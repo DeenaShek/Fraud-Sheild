@@ -9,7 +9,9 @@ import {
   Layers, 
   Activity, 
   Users, 
-  FileText 
+  FileText,
+  Send,
+  Wallet
 } from 'lucide-react';
 
 export function Sidebar({ activeView, setActiveView }) {
@@ -26,9 +28,27 @@ export function Sidebar({ activeView, setActiveView }) {
       allowed: true
     },
     {
+      id: 'sender',
+      label: 'Live Sender View',
+      sublabel: 'Judge interactive transfer & anomaly flags',
+      icon: Send,
+      color: 'text-cyan-300',
+      badge: 'Judge Demo',
+      allowed: true
+    },
+    {
+      id: 'receiver',
+      label: 'Live Receiver Ledger',
+      sublabel: 'Instant balance & fraud hold interceptor',
+      icon: Wallet,
+      color: 'text-emerald-400',
+      badge: 'Live P2P',
+      allowed: true
+    },
+    {
       id: 'investigation',
       label: 'Investigation Workspace',
-      sublabel: '360° dossier & AI copilot',
+      sublabel: '360° forensic dossier & SHAP explainability',
       icon: SearchCode,
       color: 'text-amber-400',
       allowed: true
