@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { NetworkGraphViewer } from '../components/network/NetworkGraphViewer';
+import { ShapWaterfallChart } from '../components/shap/ShapWaterfallChart';
 import { 
   ShieldAlert, 
   ShieldCheck, 
@@ -288,6 +289,9 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
 
             </div>
           </div>
+
+          {/* SHAP Additive Feature Attribution (Explainable ML) */}
+          <ShapWaterfallChart mlEvaluation={mlEvaluation} />
 
           {/* Customer Behavioral Baseline vs Current Transaction */}
           {(() => {

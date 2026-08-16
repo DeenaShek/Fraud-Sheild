@@ -126,6 +126,10 @@ router.get('/:transactionId', requireAuth, async (req, res) => {
         probability: txn.mlProbability,
         probabilityDisplay: txn.mlProbabilityDisplay,
         confidenceLevel: txn.mlConfidence,
+        baseValue: txn.mlBaseValue ?? 0.0148,
+        baseValueDisplay: `${Math.round((txn.mlBaseValue ?? 0.0148) * 100)}%`,
+        shapValues: txn.mlShapValues || [],
+        efficiencyCheck: txn.mlEfficiencyCheck,
         features: txn.mlFeatures,
         contributions: txn.mlContributions
       },

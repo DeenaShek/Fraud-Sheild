@@ -89,6 +89,9 @@ export class StreamController {
       mlProbability: mlEvaluation.probability,
       mlProbabilityDisplay: mlEvaluation.probabilityDisplay,
       mlConfidence: mlEvaluation.confidenceLevel,
+      mlBaseValue: mlEvaluation.baseValue,
+      mlShapValues: mlEvaluation.shapValues,
+      mlEfficiencyCheck: mlEvaluation.efficiencyCheck,
       mlFeatures: mlEvaluation.features,
       mlContributions: mlEvaluation.contributions,
       

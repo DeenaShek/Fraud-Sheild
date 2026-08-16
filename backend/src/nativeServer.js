@@ -16,6 +16,7 @@ import { networkGraphEngine } from './engine/networkGraph.js';
 import { policyRetriever } from './rag/retriever.js';
 import { investigationCopilot } from './rag/llmCopilot.js';
 import { transactionGenerator } from './simulator/transactionGenerator.js';
+import { eventBus, TOPICS } from './events/eventBus.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -350,7 +351,58 @@ let simRunning = false;
 let simTimer = null;
 let simIntervalMs = 3000;
 
+// ============================================================================
+// KAFKA-READY TOPIC EVENT BUS SUBSCRIPTION ARCHITECTURE
+// ============================================================================
+
+// Consumer 1: Alert Manager subscribes to 'transaction.scored' topic
+eventBus.subscribe(TOPICS.TRANSACTION_SCORED, ({ payload: scoredData }) => {
+  const { transaction: txnDoc, ruleEvaluation } = scoredData;
+  if (ruleEvaluation && ruleEvaluation.riskBand !== 'LOW') {
+    const createdAlert = {
+      _id: `alt_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      alertId: `ALT-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+      transactionId: txnDoc.transactionId,
+      customerId: txnDoc.customerId,
+      customerName: txnDoc.customerName,
+      amount: txnDoc.amount,
+      riskScore: txnDoc.ruleScore,
+      riskBand: txnDoc.riskBand,
+      actionRequired: txnDoc.action,
+      topReasons: ruleEvaluation.reasons.filter(r => r.triggered).map(r => `${r.title} (+${r.points} pts)`),
+      mlProbability: txnDoc.mlProbabilityDisplay,
+      status: 'OPEN',
+      createdAt: new Date()
+    };
+    alerts.unshift(createdAlert);
+    if (alerts.length > 100) alerts.pop();
+
+    // Publish to topic: alert.raised
+    eventBus.publish(TOPICS.ALERT_RAISED, createdAlert);
+  }
+});
+
+// Consumer 2: Real-Time Broadcast decoupled from engine execution
+eventBus.subscribe(TOPICS.TRANSACTION_SCORED, ({ payload: scoredData }) => {
+  broadcastEvent('new_transaction', scoredData.transaction);
+});
+
+eventBus.subscribe(TOPICS.ALERT_RAISED, ({ payload: alertDoc }) => {
+  broadcastEvent('new_alert', alertDoc);
+});
+
+eventBus.subscribe(TOPICS.INVESTIGATION_RESOLVED, ({ payload: resolutionData }) => {
+  broadcastEvent('investigation_resolved', resolutionData);
+});
+
+// ============================================================================
+// TRANSACTION INGESTION & PIPELINE EXECUTION
+// ============================================================================
+
 function processTransaction(rawTxn) {
+  // 1. Publish to Kafka topic: transaction.created
+  eventBus.publish(TOPICS.TRANSACTION_CREATED, rawTxn);
+
   const customer = customers.find(c => c.customerId === rawTxn.customerId) || customers[0];
   const context = {
     knownDevices: customer.knownDevices || [rawTxn.deviceId],
@@ -400,6 +452,9 @@ function processTransaction(rawTxn) {
     mlProbability: mlEvaluation.probability,
     mlProbabilityDisplay: mlEvaluation.probabilityDisplay,
     mlConfidence: mlEvaluation.confidenceLevel,
+    mlBaseValue: mlEvaluation.baseValue,
+    mlShapValues: mlEvaluation.shapValues,
+    mlEfficiencyCheck: mlEvaluation.efficiencyCheck,
     mlFeatures: mlEvaluation.features,
     mlContributions: mlEvaluation.contributions,
     status: ruleEvaluation.riskBand === 'CRITICAL' ? 'INVESTIGATING' : 'PROCESSED',
@@ -411,32 +466,11 @@ function processTransaction(rawTxn) {
   transactions.unshift(txnDoc);
   if (transactions.length > 200) transactions.pop();
 
-  let createdAlert = null;
-  if (ruleEvaluation.riskBand !== 'LOW') {
-    createdAlert = {
-      _id: `alt_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-      alertId: `ALT-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
-      transactionId: txnDoc.transactionId,
-      customerId: txnDoc.customerId,
-      customerName: txnDoc.customerName,
-      amount: txnDoc.amount,
-      riskScore: txnDoc.ruleScore,
-      riskBand: txnDoc.riskBand,
-      actionRequired: txnDoc.action,
-      topReasons: ruleEvaluation.reasons.filter(r => r.triggered).map(r => `${r.title} (+${r.points} pts)`),
-      mlProbability: txnDoc.mlProbabilityDisplay,
-      status: 'OPEN',
-      createdAt: new Date()
-    };
-    alerts.unshift(createdAlert);
-    if (alerts.length > 100) alerts.pop();
-  }
+  // 2. Publish to Kafka topic: transaction.scored (Decoupled triggers Consumer 1 & Consumer 2)
+  const scoredData = { transaction: txnDoc, ruleEvaluation, mlEvaluation };
+  eventBus.publish(TOPICS.TRANSACTION_SCORED, scoredData);
 
-  broadcastEvent('new_transaction', txnDoc);
-  if (createdAlert) {
-    broadcastEvent('new_alert', createdAlert);
-  }
-
+  const createdAlert = alerts.find(a => a.transactionId === txnDoc.transactionId) || null;
   return { transaction: txnDoc, alert: createdAlert, ruleEvaluation, mlEvaluation };
 }
 
@@ -688,6 +722,15 @@ const server = http.createServer(async (req, res) => {
       const alt = alerts.find(a => a.transactionId === txn.transactionId);
       if (alt) alt.status = 'RESOLVED';
 
+      // Publish to topic: investigation.resolved
+      eventBus.publish(TOPICS.INVESTIGATION_RESOLVED, {
+        transactionId: txn.transactionId,
+        resolutionAction: body.resolutionAction,
+        notes: body.notes,
+        resolvedBy: txn.resolvedBy,
+        resolvedAt: txn.resolvedAt
+      });
+
       return sendJson({ success: true, transaction: txn });
     }
 
@@ -732,6 +775,10 @@ const server = http.createServer(async (req, res) => {
         probability: txn.mlProbability,
         probabilityDisplay: txn.mlProbabilityDisplay,
         confidenceLevel: txn.mlConfidence,
+        baseValue: txn.mlBaseValue ?? 0.0148,
+        baseValueDisplay: `${Math.round((txn.mlBaseValue ?? 0.0148) * 100)}%`,
+        shapValues: txn.mlShapValues || [],
+        efficiencyCheck: txn.mlEfficiencyCheck,
         features: txn.mlFeatures,
         contributions: txn.mlContributions
       },
@@ -818,7 +865,8 @@ const server = http.createServer(async (req, res) => {
       averageMlLatencyMs: 2.1,
       totalTransactionsProcessed: transactions.length,
       activeWorkers: 4,
-      databaseStatus: 'HEALTHY (Embedded Zero-Latency Cluster)'
+      databaseStatus: 'HEALTHY (Embedded Zero-Latency Cluster)',
+      eventBus: eventBus.getTelemetry()
     });
   }
 
