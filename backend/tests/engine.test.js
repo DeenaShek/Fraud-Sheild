@@ -198,4 +198,8 @@ test('7. LLM Copilot - Answers 4 Investigator Questions with Grounded Evidence',
 
   const q4 = await investigationCopilot.answerInvestigatorQuery('What should the investigator review next?', caseContext);
   assert.ok(q4.answer.includes('BLOCK'));
+
+  // Test caching: repeated query returns cached result
+  const q1Cached = await investigationCopilot.answerInvestigatorQuery('Why was this transaction flagged?', caseContext);
+  assert.strictEqual(q1Cached, q1, 'Repeated query must return cached copilot response object');
 });

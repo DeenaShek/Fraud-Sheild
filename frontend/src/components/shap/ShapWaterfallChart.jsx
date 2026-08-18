@@ -12,18 +12,19 @@ import {
 } from 'recharts';
 import { 
   Sparkles, 
-  HelpCircle, 
   CheckCircle2, 
-  TrendingUp, 
-  TrendingDown, 
   Layers, 
   Cpu, 
-  Info 
+  Info,
+  ChevronDown,
+  ChevronUp,
+  Calculator
 } from 'lucide-react';
+import { InfoTooltip } from '../common/InfoTooltip';
 
 export function ShapWaterfallChart({ mlEvaluation }) {
   const [viewMode, setViewMode] = useState('chart'); // 'chart' | 'waterfall' | 'table'
-  const [showFormula, setShowFormula] = useState(false);
+  const [showMath, setShowMath] = useState(false);
 
   if (!mlEvaluation) return null;
 
@@ -111,15 +112,16 @@ export function ShapWaterfallChart({ mlEvaluation }) {
         <div>
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-purple-400" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-              SHAP Additive Feature Attribution
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+              <span>SHAP Feature Attribution</span>
+              <InfoTooltip term="SHAP" />
             </h3>
             <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-purple-950/80 text-purple-300 border border-purple-800">
-              Exact Shapley (2⁷ = 128 Subsets)
+              Factor Breakdown
             </span>
           </div>
           <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-            Local accuracy verified: Base Probability + ∑ Feature Attributions = ML Output
+            Fair mathematical credit assigned to every transaction parameter
           </p>
         </div>
 
@@ -158,47 +160,12 @@ export function ShapWaterfallChart({ mlEvaluation }) {
         </div>
       </div>
 
-      {/* Metric Breakdown Cards (Base + Sum = Pred) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        
-        {/* Base Value */}
-        <div className="bg-slate-900/80 border border-slate-800 p-3 rounded-xl">
-          <span className="text-[10px] font-mono uppercase text-slate-500 block">1. Model Base Value (Prior)</span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-xl font-extrabold font-mono text-slate-300">
-              {(baseValue * 100).toFixed(1)}%
-            </span>
-            <span className="text-[10px] font-mono text-slate-500">Expected with neutral inputs</span>
-          </div>
-        </div>
-
-        {/* Net Feature Impact */}
-        <div className="bg-slate-900/80 border border-slate-800 p-3 rounded-xl">
-          <span className="text-[10px] font-mono uppercase text-slate-500 block">2. Net SHAP Contributions</span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className={`text-xl font-extrabold font-mono ${
-              sumContributions >= 0 ? 'text-rose-400' : 'text-emerald-400'
-            }`}>
-              {sumContributions >= 0 ? '+' : ''}{(sumContributions * 100).toFixed(1)}%
-            </span>
-            <span className="text-[10px] font-mono text-slate-500">Across 7 tabular features</span>
-          </div>
-        </div>
-
-        {/* Final Model Output */}
-        <div className="bg-slate-900/80 border border-purple-900/50 p-3 rounded-xl relative overflow-hidden">
-          <span className="text-[10px] font-mono uppercase text-purple-400 block">3. Final ML Probability</span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-xl font-extrabold font-mono text-purple-300">
-              {(probability * 100).toFixed(1)}%
-            </span>
-            <span className="text-[10px] font-mono text-emerald-400 font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" />
-              <span>Exact Sum (Δ = 0.00%)</span>
-            </span>
-          </div>
-        </div>
-
+      {/* Plain Language Summary Above Chart (Change 4) */}
+      <div className="p-3 rounded-xl bg-purple-950/30 border border-purple-800/40 flex items-center gap-2.5 text-xs text-purple-200">
+        <Info className="w-4 h-4 text-purple-400 shrink-0" />
+        <p className="font-medium">
+          Here's exactly which factors pushed this transaction's risk up or down, and by how much.
+        </p>
       </div>
 
       {/* Main Chart / Waterfall View */}
@@ -340,41 +307,98 @@ export function ShapWaterfallChart({ mlEvaluation }) {
         </div>
       )}
 
-      {/* Math Verification Banner */}
-      <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="text-slate-300">
-            <strong>Efficiency Axiom Satisfied:</strong> <span className="text-slate-400">{(baseValue * 100).toFixed(1)}% (Base) + {(sumContributions * 100).toFixed(1)}% (SHAP) = </span>
-            <strong className="text-purple-300">{(reconstructed * 100).toFixed(1)}%</strong>
-          </span>
-        </div>
+      {/* Expandable "Show the math" Section (Change 4: Collapsed by Default) */}
+      <div className="pt-2 border-t border-slate-800/80">
         <button
-          onClick={() => setShowFormula(!showFormula)}
-          className="text-[11px] text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 self-start sm:self-auto"
+          onClick={() => setShowMath(!showMath)}
+          className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-900/70 hover:bg-slate-900 border border-slate-800 text-xs font-mono text-cyan-400 hover:text-cyan-300 transition-all"
         >
-          <Info className="w-3.5 h-3.5" />
-          <span>{showFormula ? 'Hide Formula' : 'How this is computed'}</span>
+          <div className="flex items-center gap-2">
+            <Calculator className="w-4 h-4 text-cyan-400" />
+            <span className="font-bold">
+              {showMath ? 'Hide mathematical breakdown & formula' : 'Show the math (Base Value, Additive Proof & Shapley Formula)'}
+            </span>
+          </div>
+          {showMath ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
-      </div>
 
-      {showFormula && (
-        <div className="p-3.5 bg-slate-900/90 rounded-xl border border-cyan-900/40 text-xs font-mono text-slate-300 space-y-2 animate-fadeIn">
-          <div className="text-cyan-300 font-bold flex items-center gap-1.5">
-            <Cpu className="w-4 h-4" />
-            <span>Exact Shapley Marginal Contribution Formula</span>
+        {showMath && (
+          <div className="mt-3 space-y-3 animate-fadeIn">
+            
+            {/* Metric Breakdown Cards (Base + Sum = Pred) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              
+              {/* Base Value */}
+              <div className="bg-slate-900/80 border border-slate-800 p-3 rounded-xl">
+                <span className="text-[10px] font-mono uppercase text-slate-500 block">1. Model Base Value (Prior)</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-xl font-extrabold font-mono text-slate-300">
+                    {(baseValue * 100).toFixed(1)}%
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-500">Expected with neutral inputs</span>
+                </div>
+              </div>
+
+              {/* Net Feature Impact */}
+              <div className="bg-slate-900/80 border border-slate-800 p-3 rounded-xl">
+                <span className="text-[10px] font-mono uppercase text-slate-500 block">2. Net SHAP Contributions</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className={`text-xl font-extrabold font-mono ${
+                    sumContributions >= 0 ? 'text-rose-400' : 'text-emerald-400'
+                  }`}>
+                    {sumContributions >= 0 ? '+' : ''}{(sumContributions * 100).toFixed(1)}%
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-500">Across 7 tabular features</span>
+                </div>
+              </div>
+
+              {/* Final Model Output */}
+              <div className="bg-slate-900/80 border border-purple-900/50 p-3 rounded-xl relative overflow-hidden">
+                <span className="text-[10px] font-mono uppercase text-purple-400 block">3. Final ML Probability</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-xl font-extrabold font-mono text-purple-300">
+                    {(probability * 100).toFixed(1)}%
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Exact Sum (Δ = 0.00%)</span>
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Math Verification Banner */}
+            <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="text-slate-300">
+                  <strong>Efficiency Axiom Satisfied:</strong> <span className="text-slate-400">{(baseValue * 100).toFixed(1)}% (Base) + {(sumContributions * 100).toFixed(1)}% (SHAP) = </span>
+                  <strong className="text-purple-300">{(reconstructed * 100).toFixed(1)}%</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Formula Details */}
+            <div className="p-3.5 bg-slate-900/90 rounded-xl border border-cyan-900/40 text-xs font-mono text-slate-300 space-y-2">
+              <div className="text-cyan-300 font-bold flex items-center gap-1.5">
+                <Cpu className="w-4 h-4" />
+                <span>Exact Shapley Marginal Contribution Formula</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                For each feature <code className="text-white">i</code>, its contribution <code className="text-purple-300">φᵢ</code> is calculated across all subsets <code className="text-white">S ⊆ F \ &#123;i&#125;</code>:
+              </p>
+              <div className="bg-slate-950 p-2 rounded-lg text-center text-cyan-400 font-mono text-[11px] overflow-x-auto">
+                φᵢ = ∑ [ |S|! (n - |S| - 1)! / n! ] · [ f(S ∪ &#123;i&#125;) - f(S) ]
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Because our tabular model evaluates 7 orthogonal features, we evaluate all 2⁷ = 128 feature permutations exactly in under 2ms, guaranteeing zero approximation error and strict additive efficiency.
+              </p>
+            </div>
+
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            For each feature <code className="text-white">i</code>, its contribution <code className="text-purple-300">φᵢ</code> is calculated across all subsets <code className="text-white">S ⊆ F \ &#123;i&#125;</code>:
-          </p>
-          <div className="bg-slate-950 p-2 rounded-lg text-center text-cyan-400 font-mono text-[11px] overflow-x-auto">
-            φᵢ = ∑ [ |S|! (n - |S| - 1)! / n! ] · [ f(S ∪ &#123;i&#125;) - f(S) ]
-          </div>
-          <p className="text-[10px] text-slate-400">
-            Because our tabular model evaluates 7 orthogonal features, we evaluate all 2⁷ = 128 feature permutations exactly in under 2ms, guaranteeing zero approximation error and strict additive efficiency.
-          </p>
-        </div>
-      )}
+        )}
+      </div>
 
     </div>
   );

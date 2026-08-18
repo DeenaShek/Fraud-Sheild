@@ -16,6 +16,16 @@ import { policyRetriever } from './retriever.js';
 export class InvestigationCopilot {
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || null;
+    this.queryCache = new Map();
+  }
+
+  getCacheKey(transactionId, query) {
+    const rawQuery = typeof query === 'string' ? query : (query?.question || query?.query || '');
+    return `${transactionId || 'GLOBAL'}:${rawQuery.trim().toLowerCase()}`;
+  }
+
+  clearCache() {
+    this.queryCache.clear();
   }
 
   /**
@@ -27,6 +37,13 @@ export class InvestigationCopilot {
    */
   async answerInvestigatorQuery(query, caseContext) {
     const { transaction, customer, ruleEvaluation, mlResult, networkContext } = caseContext;
+    const txId = transaction?.transactionId || transaction?._id || 'TX-SAMPLE';
+    const cacheKey = this.getCacheKey(txId, query);
+
+    // Cache hit check: Prevents duplicate LLM / RAG execution under high case volume
+    if (this.queryCache.has(cacheKey)) {
+      return this.queryCache.get(cacheKey);
+    }
 
     // 1. RAG Step: Retrieve top relevant policy chunks for this question and case
     const retrievedPolicies = policyRetriever.retrieveRelevantPolicies(
@@ -36,7 +53,7 @@ export class InvestigationCopilot {
 
     // 2. Format Structured Evidence
     const evidenceSummary = {
-      transactionId: transaction?.transactionId || transaction?._id || 'TX-SAMPLE',
+      transactionId: txId,
       customerId: customer?.customerId || transaction?.customerId || 'CUST-8021',
       customerName: customer?.name || transaction?.customerName || 'Customer',
       amount: `₹${Number(transaction?.amount || 0).toLocaleString('en-IN')}`,
@@ -53,27 +70,41 @@ export class InvestigationCopilot {
       linkedAccounts: networkContext?.metrics?.criticalEntitiesCount || 0
     };
 
+    let result = null;
+
     // 3. Try Live LLM Provider if configured, otherwise use high-fidelity expert grounding engine
     if (this.apiKey) {
       try {
         const liveResponse = await this.callExternalLLM(query, evidenceSummary, ruleEvaluation, retrievedPolicies);
-        if (liveResponse) return liveResponse;
+        if (liveResponse) result = liveResponse;
       } catch (err) {
         console.warn('[LLM Copilot] External API call failed or timed out, using deterministic grounded engine:', err.message);
       }
     }
 
-    // 4. Grounded Synthesis Engine
-    return this.synthesizeGroundedResponse(query, evidenceSummary, ruleEvaluation, mlResult, retrievedPolicies, networkContext);
+    // 4. Grounded Synthesis Engine (if live LLM not active or failed)
+    if (!result) {
+      result = this.synthesizeGroundedResponse(query, evidenceSummary, ruleEvaluation, mlResult, retrievedPolicies, networkContext);
+    }
+
+    // Store in cache (LRU eviction cap at 1000 items)
+    if (this.queryCache.size >= 1000) {
+      const firstKey = this.queryCache.keys().next().value;
+      this.queryCache.delete(firstKey);
+    }
+    this.queryCache.set(cacheKey, result);
+
+    return result;
   }
 
   /**
    * Deterministic, grounded AI response synthesizer with precise policy citations.
    */
   synthesizeGroundedResponse(query, evidence, ruleEval, mlResult, policies, networkContext) {
-    const normalizedQuery = query.toLowerCase();
+    const rawQuery = typeof query === 'string' ? query : (query?.question || query?.query || '');
+    const normalizedQuery = rawQuery.toLowerCase();
     const triggeredRules = (ruleEval?.reasons || []).filter(r => r.triggered);
-    const primaryPolicy = policies[0] || { id: 'POL-001', title: 'Core Risk Score Thresholds' };
+    const primaryPolicy = (policies && policies[0]) || { id: 'POL-001', title: 'Core Risk Score Thresholds' };
 
     let answerText = '';
     let category = 'GENERAL_ANALYSIS';

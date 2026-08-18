@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { InfoTooltip } from '../common/InfoTooltip';
 import { 
   Radar, 
   SearchCode, 
@@ -30,10 +31,10 @@ export function Sidebar({ activeView, setActiveView }) {
     {
       id: 'sender',
       label: 'Live Sender View',
-      sublabel: 'Judge interactive transfer & anomaly flags',
+      sublabel: 'Interactive transfer & anomaly flags',
       icon: Send,
       color: 'text-cyan-300',
-      badge: 'Judge Demo',
+      badge: 'Interactive',
       allowed: true
     },
     {
@@ -123,9 +124,12 @@ export function Sidebar({ activeView, setActiveView }) {
 
         {/* Engine Specs Card */}
         <div className="mt-8 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-200 mb-2">
-            <Activity className="w-4 h-4 text-cyan-400" />
-            <span>Deterministic Core</span>
+          <div className="flex items-center justify-between text-xs font-bold text-slate-200 mb-2">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-cyan-400" />
+              <span>Deterministic Core</span>
+            </div>
+            <InfoTooltip term="Rule Score" position="right" />
           </div>
           <div className="space-y-1.5 text-[11px] text-slate-400 font-mono">
             <div className="flex justify-between">
@@ -136,12 +140,18 @@ export function Sidebar({ activeView, setActiveView }) {
               <span>Explainable Rules:</span>
               <span className="text-slate-300">6 Active</span>
             </div>
-            <div className="flex justify-between">
-              <span>ML Probability:</span>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-1">
+                <span>ML Probability:</span>
+                <InfoTooltip term="ML Fraud Probability" position="right" />
+              </span>
               <span className="text-purple-400">Random Forest</span>
             </div>
-            <div className="flex justify-between">
-              <span>RAG Grounding:</span>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-1">
+                <span>RAG Grounding:</span>
+                <InfoTooltip term="RAG Grounded" position="right" />
+              </span>
               <span className="text-emerald-400">7 Policies</span>
             </div>
           </div>

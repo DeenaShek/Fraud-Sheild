@@ -774,16 +774,22 @@ const server = http.createServer(async (req, res) => {
 
     // Copilot Query
     if (subAction === 'copilot' && req.method === 'POST') {
-      const body = await readBody();
-      const caseContext = {
-        transaction: txn,
-        customer,
-        ruleEvaluation: { totalScore: txn.ruleScore, riskBand: txn.riskBand, action: txn.action, reasons: txn.reasons },
-        mlResult: { probability: txn.mlProbability, probabilityDisplay: txn.mlProbabilityDisplay },
-        networkContext
-      };
-      const copilotResponse = await investigationCopilot.answerInvestigatorQuery(body.query, caseContext);
-      return sendJson({ copilotResponse });
+      try {
+        const body = await readBody();
+        const questionText = body.query || body.question || (typeof body === 'string' ? body : '') || 'Summarize this case.';
+        const caseContext = {
+          transaction: txn,
+          customer,
+          ruleEvaluation: { totalScore: txn.ruleScore, riskBand: txn.riskBand, action: txn.action, reasons: txn.reasons },
+          mlResult: { probability: txn.mlProbability, probabilityDisplay: txn.mlProbabilityDisplay },
+          networkContext
+        };
+        const copilotResponse = await investigationCopilot.answerInvestigatorQuery(questionText, caseContext);
+        return sendJson({ copilotResponse });
+      } catch (copilotErr) {
+        console.error('[NativeServer] Copilot error:', copilotErr);
+        return sendJson({ error: 'Failed to process copilot query.', details: copilotErr.message }, 500);
+      }
     }
 
     // Resolve Case
@@ -1066,6 +1072,10 @@ const server = http.createServer(async (req, res) => {
       accuracyExplanation: '99.2% engine precision represents the ratio of correct classifications across our 68,213 historical validation dataset (8,213 fraud + 60,000 baseline) with a 0.8% false positive rate.',
       preventedLossExplanation: 'Prevented fraud loss is the cumulative real-time sum of blocked transaction amounts from payments scoring in the Critical risk band (81–100 points) that were intercepted before fund disbursement.'
     });
+  }
+
+  if (pathname === '/api/admin/network-graph') {
+    return sendJson({ graph: networkGraphEngine.getFullGraph() });
   }
 
   sendJson({ error: 'Endpoint Not Found' }, 404);

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { api } from '../services/api';
 import { NetworkGraphViewer } from '../components/network/NetworkGraphViewer';
+import { HowItWorksLegend } from '../components/common/HowItWorksLegend';
+import { InfoTooltip } from '../components/common/InfoTooltip';
 import { 
   ShieldAlert, 
   ShieldCheck, 
@@ -27,9 +29,7 @@ import {
   YAxis, 
   Tooltip, 
   ResponsiveContainer, 
-  Cell, 
-  PieChart, 
-  Pie 
+  Cell 
 } from 'recharts';
 
 export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
@@ -138,6 +138,9 @@ export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
   return (
     <div className="space-y-6">
       
+      {/* Change 1: "How to read this" Legend on first visit */}
+      <HowItWorksLegend defaultOpen={true} title="How to read risk scores" />
+
       {/* Top Banner Alert if Worked Example / Critical alert just fired */}
       {latestCriticalAlert && (
         <div className="glass-panel-elevated p-4 rounded-2xl border-l-4 border-l-rose-500 border-slate-700/80 shadow-2xl animate-pulse flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -210,7 +213,10 @@ export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
           title="Prevented Fraud Loss: Cumulative real-time sum of intercepted transaction amounts from payments scoring in the Critical risk band (81–100 pts) blocked before settlement."
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Prevented Fraud Loss</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+              <span>Prevented Fraud Loss</span>
+              <InfoTooltip term="Risk Band" />
+            </span>
             <DollarSign className="w-4 h-4 text-rose-400" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
@@ -227,7 +233,10 @@ export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
         {/* Open Triage Alerts */}
         <div className="glass-panel p-4 rounded-2xl border border-slate-800">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Active Risk Alerts</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+              <span>Active Risk Alerts</span>
+              <InfoTooltip term="Rule Score" />
+            </span>
             <ShieldAlert className="w-4 h-4 text-amber-400" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
@@ -325,17 +334,20 @@ export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
           </div>
 
           {/* Risk Band Filter */}
-          <select
-            value={filterRisk}
-            onChange={(e) => setFilterRisk(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500"
-          >
-            <option value="ALL">All Risk Bands</option>
-            <option value="CRITICAL">Critical (81-100)</option>
-            <option value="HIGH">High (61-80)</option>
-            <option value="MEDIUM">Medium (31-60)</option>
-            <option value="LOW">Low (0-30)</option>
-          </select>
+          <div className="flex items-center gap-1">
+            <select
+              value={filterRisk}
+              onChange={(e) => setFilterRisk(e.target.value)}
+              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500"
+            >
+              <option value="ALL">All Risk Bands</option>
+              <option value="CRITICAL">Critical (81-100)</option>
+              <option value="HIGH">High (61-80)</option>
+              <option value="MEDIUM">Medium (31-60)</option>
+              <option value="LOW">Low (0-30)</option>
+            </select>
+            <InfoTooltip term="Risk Band" />
+          </div>
         </div>
 
       </div>
@@ -347,11 +359,16 @@ export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
           {/* Live Transaction Feed Table */}
           <div className="lg:col-span-2 glass-panel rounded-2xl border border-slate-800 overflow-hidden">
             <div className="p-4 border-b border-slate-800/80 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-                  Real-Time Transactions Stream
-                </h3>
+              <div>
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-cyan-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                    Real-Time Transactions Stream
+                  </h3>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Live payments streaming through the event bus and evaluated instantly across 6 checks.
+                </p>
               </div>
               <span className="text-[11px] font-mono text-slate-400">
                 Sorted by most recent
@@ -366,7 +383,12 @@ export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
                     <th className="p-3">Customer</th>
                     <th className="p-3">Amount & Baseline</th>
                     <th className="p-3">Location / Device</th>
-                    <th className="p-3">Score & Band</th>
+                    <th className="p-3">
+                      <span className="inline-flex items-center gap-1">
+                        <span>Score & Band</span>
+                        <InfoTooltip term="Risk Band" />
+                      </span>
+                    </th>
                     <th className="p-3">Decision</th>
                     <th className="p-3 text-right">Action</th>
                   </tr>
@@ -421,8 +443,9 @@ export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
                           <div className="flex items-center gap-1.5">
                             {getRiskBadge(tx.riskBand, tx.ruleScore)}
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                            ML: {tx.mlProbabilityDisplay || '5%'}
+                          <div className="text-[10px] text-slate-400 mt-0.5 font-mono flex items-center gap-1">
+                            <span>ML: {tx.mlProbabilityDisplay || '5%'}</span>
+                            <InfoTooltip term="ML Fraud Probability" />
                           </div>
                         </td>
 
@@ -452,10 +475,16 @@ export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
             
             {/* Risk Distribution Chart */}
             <div className="glass-panel p-4 rounded-2xl border border-slate-800">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-3 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-cyan-400" />
-                <span>Risk Band Distribution</span>
-              </h3>
+              <div className="mb-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-cyan-400" />
+                  <span>Risk Band Distribution</span>
+                  <InfoTooltip term="Risk Band" />
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Real-time proportion of scored transactions across all 4 risk tiers.
+                </p>
+              </div>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats?.distribution || [
@@ -520,10 +549,15 @@ export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
       {activeTab === 'alerts' && (
         <div className="glass-panel rounded-2xl border border-slate-800 p-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-amber-400" />
-              <span>Real-Time Fraud Alerts Feed</span>
-            </h3>
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-400" />
+                <span>Real-Time Fraud Alerts Feed</span>
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Elevated risk transactions queued for fraud analyst investigation and resolution.
+              </p>
+            </div>
             <span className="text-xs text-slate-400 font-mono">
               {alerts.length} Total Alerts Logged
             </span>
@@ -592,10 +626,13 @@ export function DetectionCenter({ onSelectTransaction, onOpenCopilot }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Customer Directory */}
           <div className="glass-panel p-4 rounded-2xl border border-slate-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-3 flex items-center gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-1 flex items-center gap-2">
               <Users className="w-4 h-4 text-purple-400" />
               <span>Customer Baseline Profiles</span>
             </h3>
+            <p className="text-[11px] text-slate-400 mb-3">
+              90-day moving average spending and trusted device patterns.
+            </p>
             <div className="space-y-2 max-h-[480px] overflow-y-auto">
               {customers.map((c) => (
                 <div

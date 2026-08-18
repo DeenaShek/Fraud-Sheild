@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { NetworkGraphViewer } from '../components/network/NetworkGraphViewer';
 import { ShapWaterfallChart } from '../components/shap/ShapWaterfallChart';
+import { InfoTooltip } from '../components/common/InfoTooltip';
 import { 
   ShieldAlert, 
   ShieldCheck, 
@@ -153,67 +154,97 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
   return (
     <div className="space-y-6">
       
-      {/* Case Header & Action Bar */}
-      <div className="glass-panel-elevated p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* Case Header & Action Bar with Prominent Hero Risk Score (Change 3) */}
+      <div className="glass-panel-elevated p-6 rounded-2xl border border-slate-800 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-start sm:items-center gap-4">
           <button
             onClick={onBack}
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition-all"
+            className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition-all shrink-0 mt-1 sm:mt-0"
             title="Back to Detection Center"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-mono font-bold text-cyan-400">
                 CASE #{transaction.transactionId}
               </span>
-              <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded ${
+              <span className={`px-2.5 py-0.5 text-xs font-mono font-bold rounded-md flex items-center gap-1 ${
                 transaction.riskBand === 'CRITICAL' ? 'badge-crit' : 
                 transaction.riskBand === 'HIGH' ? 'badge-high' : 
                 transaction.riskBand === 'MEDIUM' ? 'badge-med' : 'badge-low'
               }`}>
                 {transaction.riskBand} ({transaction.ruleScore}/100)
               </span>
+              <InfoTooltip term="Risk Band" />
               {isResolved && (
-                <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+                <span className="px-2.5 py-0.5 text-xs font-mono font-bold rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
                   {transaction.status}
                 </span>
               )}
             </div>
 
-            <h2 className="text-lg font-bold text-white mt-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-white mt-1.5">
               Payment of ₹{Number(transaction.amount || 0).toLocaleString('en-IN')} by {customer.name}
-            </h2>
-            <p className="text-xs text-slate-400 font-mono">
+            </h1>
+            <p className="text-xs text-slate-400 font-mono mt-0.5">
               Merchant: {transaction.merchant?.name || transaction.merchant} ({transaction.merchant?.category || 'Retail'}) • Location: {transaction.location}
             </p>
           </div>
         </div>
 
-        {/* Resolution Action Trigger */}
-        <div className="flex items-center gap-3 shrink-0">
-          {!isResolved ? (
-            <button
-              onClick={() => setShowResolutionModal(true)}
-              className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-cyan-900/30 flex items-center gap-2 transition-all active:scale-95"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Record Resolution Decision</span>
-            </button>
-          ) : (
+        {/* Hero Dominant Score Card & Resolution Button */}
+        <div className="flex items-center gap-4 self-stretch lg:self-auto justify-between lg:justify-end shrink-0 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-800">
+          
+          {/* Primary Score Hero Pill */}
+          <div className="flex items-center gap-3 bg-slate-950/80 border border-slate-800 px-4 py-2.5 rounded-2xl shadow-inner">
             <div className="text-right">
-              <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 justify-end">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Resolved as {transaction.status.replace('RESOLVED_', '')}</span>
-              </div>
-              <p className="text-[10px] text-slate-400 font-mono">
-                By {transaction.resolvedBy} on {new Date(transaction.resolvedAt).toLocaleString()}
-              </p>
+              <span className="text-[10px] uppercase font-mono text-slate-400 block font-bold">
+                Overall Risk Score
+              </span>
+              <span className={`text-xs font-bold uppercase font-mono ${
+                transaction.riskBand === 'CRITICAL' ? 'text-rose-400' :
+                transaction.riskBand === 'HIGH' ? 'text-orange-400' :
+                transaction.riskBand === 'MEDIUM' ? 'text-amber-400' : 'text-emerald-400'
+              }`}>
+                {ruleEvaluation.action}
+              </span>
             </div>
-          )}
+            <div className={`text-3xl sm:text-4xl font-extrabold font-mono tracking-tight ${
+              transaction.riskBand === 'CRITICAL' ? 'text-rose-400' :
+              transaction.riskBand === 'HIGH' ? 'text-orange-400' :
+              transaction.riskBand === 'MEDIUM' ? 'text-amber-400' : 'text-emerald-400'
+            }`}>
+              {ruleEvaluation.totalScore}
+              <span className="text-xs text-slate-500 font-normal">/100</span>
+            </div>
+          </div>
+
+          {/* Resolution Action Trigger */}
+          <div className="shrink-0">
+            {!isResolved ? (
+              <button
+                onClick={() => setShowResolutionModal(true)}
+                className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-cyan-900/30 flex items-center gap-2 transition-all active:scale-95"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Record Resolution</span>
+              </button>
+            ) : (
+              <div className="text-right">
+                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 justify-end">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Resolved as {transaction.status.replace('RESOLVED_', '')}</span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  By {transaction.resolvedBy} on {new Date(transaction.resolvedAt).toLocaleString()}
+                </p>
+              </div>
+            )}
+          </div>
+
         </div>
 
       </div>
@@ -226,21 +257,36 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
           
           {/* Dual Engine Score Banner (Deterministic + ML Tabular) */}
           <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
-              <span>Dual Intelligence Signal Evaluation</span>
-              <span className="text-[10px] font-mono text-cyan-400">Additive Separation of Concerns</span>
-            </h3>
+            <div className="mb-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span>Dual Intelligence Signal Evaluation</span>
+                  <InfoTooltip term="Rule Score" />
+                </span>
+                <span className="text-[10px] font-mono text-cyan-400">Additive Separation of Concerns</span>
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Our main explainable rule engine paired with a second-opinion ML probability estimate.
+              </p>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               
               {/* Deterministic Rule Score */}
               <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl relative overflow-hidden">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-300">Deterministic Rule Score</span>
+                  <span className="text-xs font-bold text-slate-200 flex items-center gap-1">
+                    <span>Deterministic Rule Score</span>
+                    <InfoTooltip term="Deterministic Rule Score" />
+                  </span>
                   <Cpu className="w-4 h-4 text-cyan-400" />
                 </div>
                 <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold font-mono text-white">
+                  <span className={`text-4xl font-extrabold font-mono ${
+                    ruleEvaluation.totalScore >= 81 ? 'text-rose-400' :
+                    ruleEvaluation.totalScore >= 61 ? 'text-orange-400' :
+                    ruleEvaluation.totalScore >= 31 ? 'text-amber-400' : 'text-emerald-400'
+                  }`}>
                     {ruleEvaluation.totalScore}
                   </span>
                   <span className="text-xs font-mono text-slate-400">/ 100 max</span>
@@ -257,7 +303,7 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
                     />
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-2 font-mono">
+                <p className="text-[11px] text-slate-300 mt-2 font-mono">
                   Prescribed Action: <strong className="text-white">{ruleEvaluation.action}</strong> ({ruleEvaluation.riskBand})
                 </p>
               </div>
@@ -265,11 +311,14 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
               {/* ML Tabular Probability (Secondary Signal) */}
               <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl relative overflow-hidden">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-300">ML Fraud Probability</span>
+                  <span className="text-xs font-bold text-slate-200 flex items-center gap-1">
+                    <span>ML Fraud Probability</span>
+                    <InfoTooltip term="ML Fraud Probability" />
+                  </span>
                   <Sparkles className="w-4 h-4 text-purple-400" />
                 </div>
                 <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold font-mono text-purple-400">
+                  <span className="text-4xl font-extrabold font-mono text-purple-400">
                     {mlEvaluation.probabilityDisplay || '94%'}
                   </span>
                   <span className="text-xs font-mono text-slate-400">({mlEvaluation.confidenceLevel} Confidence)</span>
@@ -290,10 +339,7 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
             </div>
           </div>
 
-          {/* SHAP Additive Feature Attribution (Explainable ML) */}
-          <ShapWaterfallChart mlEvaluation={mlEvaluation} />
-
-          {/* Customer Behavioral Baseline vs Current Transaction */}
+          {/* Customer Behavioral Baseline vs Current Transaction (Change 3 header) */}
           {(() => {
             const rule1 = ruleEvaluation?.reasons?.find(r => r.category === 'AMOUNT_ANOMALY' || r.ruleId === 'RULE_AMOUNT_ANOMALY');
             const rule2 = ruleEvaluation?.reasons?.find(r => r.category === 'DEVICE_ANOMALY' || r.ruleId === 'RULE_DEVICE_ANOMALY');
@@ -308,10 +354,15 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
 
             return (
               <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                  <User className="w-4 h-4 text-cyan-400" />
-                  <span>Behavioral Baseline vs Observed Transaction</span>
-                </h3>
+                <div className="mb-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                    <User className="w-4 h-4 text-cyan-400" />
+                    <span>Customer Behavioral Baseline vs. Observed Transaction</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Compares this transfer against the user's historical spend pattern, home location, and registered devices.
+                  </p>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
                   
@@ -387,14 +438,19 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
             );
           })()}
 
-          {/* The 6 Explainable Anomaly Reasons */}
+          {/* The 6 Explainable Anomaly Reasons (Change 3: Header with Plain Description) */}
           <div className="glass-panel p-5 rounded-2xl border border-slate-800">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-rose-400" />
-                <span>The 6 Explainable Anomaly Reasons</span>
-              </h3>
-              <span className="text-xs font-mono text-slate-400">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-rose-400" />
+                  <span>Why this score? Here's exactly which checks triggered.</span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Six deterministic checks evaluate amount, device, location, speed, merchant, and network.
+                </p>
+              </div>
+              <span className="text-xs font-mono text-slate-300 shrink-0 font-bold">
                 {ruleEvaluation.reasons.filter(r => r.triggered).length} of 6 Triggered
               </span>
             </div>
@@ -436,6 +492,9 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
             </div>
           </div>
 
+          {/* SHAP Additive Feature Attribution (Explainable ML) */}
+          <ShapWaterfallChart mlEvaluation={mlEvaluation} />
+
           {/* Network Graph Visualizer - Wired Strictly to Rule 6 */}
           {(() => {
             const rule6 = ruleEvaluation?.reasons?.find(r => r.category === 'FRAUD_NETWORK' || r.ruleId === 'RULE_FRAUD_NETWORK');
@@ -469,8 +528,9 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                    AI Investigation Copilot
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <span>AI Investigation Copilot</span>
+                    <InfoTooltip term="RAG Grounded" />
                   </h3>
                   <p className="text-[10px] text-cyan-400 font-mono">
                     RAG Grounded in Bank SOP & Policy
@@ -593,12 +653,18 @@ export function InvestigationWorkspace({ selectedTransactionId, onBack }) {
           {/* RAG Knowledge Grounding Panel */}
           <div className="glass-panel p-5 rounded-2xl border border-slate-800">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-emerald-400" />
-                <span>RAG Grounded Policy Evidence</span>
-              </h3>
-              <span className="text-[10px] font-mono text-emerald-400">
-                {retrievedPolicies?.length || 0} Retrieved Articles
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-emerald-400" />
+                  <span>RAG Grounded Policy Evidence</span>
+                  <InfoTooltip term="RAG Grounded" />
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Official bank SOP rules and thresholds retrieved for this case.
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-emerald-400 font-bold shrink-0">
+                {retrievedPolicies?.length || 0} Retrieved
               </span>
             </div>
 

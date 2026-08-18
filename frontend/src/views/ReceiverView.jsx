@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useSocket } from '../context/SocketContext';
+import { InfoTooltip } from '../components/common/InfoTooltip';
 import { 
   Wallet, 
   ShieldAlert, 
@@ -13,7 +14,8 @@ import {
   Zap, 
   RefreshCw,
   Lock,
-  Sparkles
+  Sparkles,
+  Info
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -141,8 +143,8 @@ export function ReceiverView({ onSelectTransaction }) {
           <h1 className="text-xl font-bold text-white mt-1">
             Receiver Inbound Ledger
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Real-time balance updates and automated fraud hold interceptor.
+          <p className="text-sm font-medium text-emerald-300 mt-1">
+            This is what the recipient sees — payments settle instantly unless they're flagged for review.
           </p>
         </div>
 
@@ -236,6 +238,7 @@ export function ReceiverView({ onSelectTransaction }) {
                   <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-rose-950 text-rose-300 border border-rose-800">
                     {latestHeldAlert.riskBand} ({latestHeldAlert.ruleScore || 100} pts)
                   </span>
+                  <InfoTooltip term="Risk Band" />
                 </div>
                 <p className="text-xs text-rose-200 font-mono mt-1">
                   Attempted transfer of <strong className="text-white">₹{Number(latestHeldAlert.amount).toLocaleString('en-IN')}</strong> from <strong className="text-white">{latestHeldAlert.senderName}</strong> was intercepted by FraudShield.
@@ -284,7 +287,12 @@ export function ReceiverView({ onSelectTransaction }) {
                   <th className="py-2.5 px-3">Transaction ID</th>
                   <th className="py-2.5 px-3">Sender</th>
                   <th className="py-2.5 px-3">Amount</th>
-                  <th className="py-2.5 px-3">Risk Assessment</th>
+                  <th className="py-2.5 px-3">
+                    <span className="inline-flex items-center gap-1">
+                      <span>Risk Assessment</span>
+                      <InfoTooltip term="Risk Band" />
+                    </span>
+                  </th>
                   <th className="py-2.5 px-3">Status</th>
                   <th className="py-2.5 px-3 text-right">Time</th>
                 </tr>
@@ -305,17 +313,11 @@ export function ReceiverView({ onSelectTransaction }) {
                       </span>
                     </td>
                     <td className="py-2.5 px-3">
-                      {tx.status === 'SETTLED' ? (
-                        <span className="text-emerald-400 font-bold flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Credited</span>
-                        </span>
-                      ) : (
-                        <span className="text-rose-400 font-bold flex items-center gap-1">
-                          <Lock className="w-3.5 h-3.5" />
-                          <span>Held in Review</span>
-                        </span>
-                      )}
+                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+                        tx.status === 'SETTLED' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'
+                      }`}>
+                        {tx.status}
+                      </span>
                     </td>
                     <td className="py-2.5 px-3 text-right text-slate-400">{tx.timestamp}</td>
                   </tr>
@@ -324,13 +326,12 @@ export function ReceiverView({ onSelectTransaction }) {
             </table>
           </div>
         ) : (
-          <div className="p-8 text-center text-slate-500 font-mono text-xs space-y-1">
-            <Clock className="w-6 h-6 mx-auto text-slate-600 mb-2" />
-            <p>No incoming payments received yet for {currentReceiver.name}.</p>
-            <p className="text-[10px] text-slate-600">Send a payment from the Sender tab to see it settle or trigger an alert live.</p>
+          <div className="p-8 text-center text-slate-500 font-mono text-xs">
+            <Clock className="w-8 h-8 mx-auto text-slate-600 mb-2" />
+            <p>No recent inbound transfers received yet.</p>
+            <p className="text-[10px] text-slate-600 mt-0.5">Payments sent from the Sender terminal will appear here in real-time.</p>
           </div>
         )}
-
       </div>
 
     </div>

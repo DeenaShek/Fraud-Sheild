@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { InfoTooltip } from '../components/common/InfoTooltip';
 import { 
   Settings2, 
   Activity, 
@@ -159,7 +160,10 @@ export function AdminPortal() {
         
         <div className="glass-panel p-4 rounded-2xl border border-slate-800">
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
-            <span>Engine Rule Latency</span>
+            <span className="flex items-center gap-1">
+              <span>Engine Rule Latency</span>
+              <InfoTooltip term="Rule Score" />
+            </span>
             <Activity className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="mt-2 text-2xl font-bold font-mono text-cyan-400">
@@ -170,7 +174,10 @@ export function AdminPortal() {
 
         <div className="glass-panel p-4 rounded-2xl border border-slate-800">
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
-            <span>ML Inference Latency</span>
+            <span className="flex items-center gap-1">
+              <span>ML Inference Latency</span>
+              <InfoTooltip term="ML Fraud Probability" />
+            </span>
             <Cpu className="w-4 h-4 text-purple-400" />
           </div>
           <div className="mt-2 text-2xl font-bold font-mono text-purple-400">
@@ -211,8 +218,9 @@ export function AdminPortal() {
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
               <Sliders className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Deterministic Fraud-Rule Studio (Max: 100 pts)
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span>Deterministic Fraud-Rule Studio (Max: 100 pts)</span>
+                <InfoTooltip term="Rule Score" />
               </h3>
             </div>
             <span className="text-[11px] font-mono text-slate-400">
@@ -449,8 +457,9 @@ export function AdminPortal() {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-purple-400" />
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                  ML Model Version & Telemetry
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <span>ML Model Version & Telemetry</span>
+                  <InfoTooltip term="ML Fraud Probability" />
                 </h3>
               </div>
               <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-purple-950 text-purple-300 border border-purple-800 rounded">

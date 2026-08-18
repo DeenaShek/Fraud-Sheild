@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useSocket } from '../context/SocketContext';
+import { InfoTooltip } from '../components/common/InfoTooltip';
 import { 
   Send, 
   Smartphone, 
@@ -16,7 +17,8 @@ import {
   Clock, 
   CreditCard, 
   ExternalLink,
-  Zap
+  Zap,
+  Sliders
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -137,7 +139,7 @@ export function SenderView({ onSelectTransaction }) {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       
-      {/* Header Banner */}
+      {/* Header Banner with Change 5 plain-language instruction */}
       <div className="glass-panel-elevated p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -145,13 +147,16 @@ export function SenderView({ onSelectTransaction }) {
               <Zap className="w-3 h-3" />
               <span>LIVE SENDER TERMINAL</span>
             </span>
-            <span className="text-xs font-mono text-slate-400">P2P Real-Time Gateway</span>
+            <span className="text-xs font-mono text-slate-400 flex items-center gap-1">
+              <span>Kafka-Ready Event Bus</span>
+              <InfoTooltip term="Event Bus / Kafka-Ready" />
+            </span>
           </div>
           <h1 className="text-xl font-bold text-white mt-1">
             Initiate Interactive Payment
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Send real-time payments through the Kafka-ready event bus and test live risk scoring.
+          <p className="text-sm font-medium text-cyan-300 mt-1">
+            Send a payment, then watch it get scored in real time. Try the toggles below to simulate a suspicious payment.
           </p>
         </div>
 
@@ -173,7 +178,7 @@ export function SenderView({ onSelectTransaction }) {
       {/* Main Grid: Form (7 cols) + Live Feedback (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column: Form & Toggles */}
+        {/* Left Column: Form & Prominent Toggles */}
         <div className="lg:col-span-7 space-y-5">
           
           <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-5">
@@ -261,21 +266,38 @@ export function SenderView({ onSelectTransaction }) {
               </div>
             </div>
 
-            {/* Interactive Judge Anomaly Toggles */}
-            <div className="p-4 rounded-xl bg-slate-950/80 border border-cyan-900/40 space-y-3">
-              <div className="text-xs font-bold text-cyan-300 uppercase tracking-wide flex items-center justify-between">
-                <span>Judge-Facing Anomaly Simulators</span>
-                <span className="text-[10px] font-mono text-slate-400">Click to inject live risk signals</span>
+            {/* Interactive Judge Anomaly Toggles - Prominent Styling (Change 5) */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border-2 border-cyan-500/40 shadow-lg space-y-3">
+              <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+                <div className="flex items-center gap-1.5">
+                  <Sliders className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wide">
+                    Live Anomaly Simulation Toggles
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800">
+                  Interactive Demo
+                </span>
               </div>
+              <p className="text-[11px] text-slate-300">
+                Toggle these controls to inject fraud signals and immediately observe how the engine calculates the score:
+              </p>
 
               {/* Toggle 1: New Device */}
-              <label className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 cursor-pointer transition-all">
-                <div className="flex items-center gap-2.5">
-                  <Smartphone className={`w-4 h-4 ${simulateNewDevice ? 'text-rose-400' : 'text-slate-500'}`} />
+              <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                simulateNewDevice ? 'bg-rose-950/40 border-rose-600/80 shadow-md shadow-rose-950/40' : 'bg-slate-900/90 border-slate-800 hover:bg-slate-850'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${simulateNewDevice ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-800 text-slate-400'}`}>
+                    <Smartphone className="w-4 h-4" />
+                  </div>
                   <div>
-                    <div className="text-xs font-bold text-white">Simulate Unrecognized Device</div>
-                    <div className="text-[10px] text-slate-400 font-mono">
-                      {simulateNewDevice ? 'Using new device DEV-JUDGE-999 (+20 pts Rule 2)' : `Using trusted device ${currentSender.knownDevices[0]} (0 pts)`}
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>Simulate Unrecognized Device</span>
+                      {simulateNewDevice && <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-rose-950 text-rose-300 border border-rose-800 font-bold">+20 pts</span>}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      {simulateNewDevice ? 'Using new device DEV-JUDGE-999 (Rule 2: Device Anomaly)' : `Using trusted device ${currentSender.knownDevices[0]} (0 pts)`}
                     </div>
                   </div>
                 </div>
@@ -283,18 +305,25 @@ export function SenderView({ onSelectTransaction }) {
                   type="checkbox"
                   checked={simulateNewDevice}
                   onChange={(e) => setSimulateNewDevice(e.target.checked)}
-                  className="w-4 h-4 accent-cyan-500 rounded cursor-pointer"
+                  className="w-5 h-5 accent-cyan-500 rounded cursor-pointer"
                 />
               </label>
 
               {/* Toggle 2: New Location */}
-              <label className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 cursor-pointer transition-all">
-                <div className="flex items-center gap-2.5">
-                  <MapPin className={`w-4 h-4 ${simulateNewLocation ? 'text-rose-400' : 'text-slate-500'}`} />
+              <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                simulateNewLocation ? 'bg-rose-950/40 border-rose-600/80 shadow-md shadow-rose-950/40' : 'bg-slate-900/90 border-slate-800 hover:bg-slate-850'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${simulateNewLocation ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-800 text-slate-400'}`}>
+                    <MapPin className="w-4 h-4" />
+                  </div>
                   <div>
-                    <div className="text-xs font-bold text-white">Simulate Geolocation Anomaly / Foreign Leap</div>
-                    <div className="text-[10px] text-slate-400 font-mono">
-                      {simulateNewLocation ? 'Origin: Lagos, Nigeria (+20 pts Rule 3)' : `Origin: ${currentSender.homeLocation} (0 pts)`}
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>Simulate Geolocation Anomaly / Foreign Leap</span>
+                      {simulateNewLocation && <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-rose-950 text-rose-300 border border-rose-800 font-bold">+20 pts</span>}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      {simulateNewLocation ? 'Origin: Lagos, Nigeria (Rule 3: Location Anomaly)' : `Origin: ${currentSender.homeLocation} (0 pts)`}
                     </div>
                   </div>
                 </div>
@@ -302,18 +331,25 @@ export function SenderView({ onSelectTransaction }) {
                   type="checkbox"
                   checked={simulateNewLocation}
                   onChange={(e) => setSimulateNewLocation(e.target.checked)}
-                  className="w-4 h-4 accent-cyan-500 rounded cursor-pointer"
+                  className="w-5 h-5 accent-cyan-500 rounded cursor-pointer"
                 />
               </label>
 
               {/* Toggle 3: New Merchant */}
-              <label className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 cursor-pointer transition-all">
-                <div className="flex items-center gap-2.5">
-                  <CreditCard className={`w-4 h-4 ${simulateNewMerchant ? 'text-amber-400' : 'text-slate-500'}`} />
+              <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                simulateNewMerchant ? 'bg-amber-950/40 border-amber-600/80 shadow-md shadow-amber-950/40' : 'bg-slate-900/90 border-slate-800 hover:bg-slate-850'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${simulateNewMerchant ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
+                    <CreditCard className="w-4 h-4" />
+                  </div>
                   <div>
-                    <div className="text-xs font-bold text-white">Simulate Unfamiliar Beneficiary Category</div>
-                    <div className="text-[10px] text-slate-400 font-mono">
-                      {simulateNewMerchant ? 'Unrecognized Beneficiary (+10 pts Rule 5)' : 'Standard peer transfer'}
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>Simulate Unfamiliar Beneficiary Category</span>
+                      {simulateNewMerchant && <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-amber-950 text-amber-300 border border-amber-800 font-bold">+10 pts</span>}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      {simulateNewMerchant ? 'Unrecognized Category (Rule 5: Merchant Anomaly)' : 'Standard peer transfer'}
                     </div>
                   </div>
                 </div>
@@ -321,7 +357,7 @@ export function SenderView({ onSelectTransaction }) {
                   type="checkbox"
                   checked={simulateNewMerchant}
                   onChange={(e) => setSimulateNewMerchant(e.target.checked)}
-                  className="w-4 h-4 accent-cyan-500 rounded cursor-pointer"
+                  className="w-5 h-5 accent-cyan-500 rounded cursor-pointer"
                 />
               </label>
             </div>
@@ -330,7 +366,7 @@ export function SenderView({ onSelectTransaction }) {
             <button
               onClick={handleSendPayment}
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-cyan-900/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50"
+              className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl text-sm shadow-lg shadow-cyan-900/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50"
             >
               {loading ? (
                 <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
@@ -350,7 +386,10 @@ export function SenderView({ onSelectTransaction }) {
           {/* Real-Time Result Card */}
           <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center justify-between">
-              <span>Pipeline Decision Engine</span>
+              <span className="flex items-center gap-1">
+                <span>Pipeline Decision Engine</span>
+                <InfoTooltip term="Rule Score" />
+              </span>
               <span className="text-[10px] font-mono text-cyan-400">Instant Evaluation</span>
             </h3>
 
@@ -383,13 +422,19 @@ export function SenderView({ onSelectTransaction }) {
                 {/* Score & ML Dual Metric */}
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                   <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-                    <span className="text-[10px] text-slate-500 block">Deterministic Rules</span>
+                    <span className="text-[10px] text-slate-400 block flex items-center gap-1">
+                      <span>Deterministic Rules</span>
+                      <InfoTooltip term="Rule Score" />
+                    </span>
                     <span className="text-base font-bold text-white">
                       {lastSubmissionResult.result?.ruleEvaluation?.triggeredRulesCount} / 6 Triggered
                     </span>
                   </div>
                   <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-                    <span className="text-[10px] text-purple-400 block">ML Fraud Prob</span>
+                    <span className="text-[10px] text-purple-400 block flex items-center gap-1">
+                      <span>ML Fraud Prob</span>
+                      <InfoTooltip term="ML Fraud Probability" />
+                    </span>
                     <span className="text-base font-bold text-purple-300">
                       {lastSubmissionResult.result?.mlEvaluation?.probabilityDisplay || '5%'}
                     </span>
